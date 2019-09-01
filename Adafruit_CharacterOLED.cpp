@@ -18,15 +18,15 @@
 //    N="0": 1-line display
 //    F="0": 5 x 8 dot character font
 // 3. Power turn off
-//    PWR=”0”
+//    PWR=â€0â€
 // 4. Display on/off control: D="0": Display off C="0": Cursor off B="0": Blinking off
 // 5. Entry mode set
 //    I/D="1": Increment by 1
 //    S="0": No shift
 // 6. Cursor/Display shift/Mode / Pwr
-//    S/C=”0”, R/L=”1”: Shifts cursor position to the right
-//    G/C=”0”: Character mode
-//    Pwr=”1”: Internal DCDC power on
+//    S/C=â€0â€, R/L=â€1â€: Shifts cursor position to the right
+//    G/C=â€0â€: Character mode
+//    Pwr=â€1â€: Internal DCDC power on
 //
 // Note, however, that resetting the Arduino doesn't reset the LCD, so we
 // can't assume that its in that state when a sketch starts (and the
@@ -76,7 +76,7 @@ void Adafruit_CharacterOLED::begin(uint8_t cols, uint8_t lines)
   digitalWrite(_enable_pin, LOW);
   digitalWrite(_rw_pin, LOW);
   
-  delayMicroseconds(50000); // give it some time to power up
+  delayMicroseconds(DELAY_INIT); // give it some time to power up
   
   // Now we pull both RS and R/W low to begin commands
   
@@ -84,7 +84,15 @@ void Adafruit_CharacterOLED::begin(uint8_t cols, uint8_t lines)
     pinMode(_data_pins[i], OUTPUT);
     digitalWrite(_data_pins[i], LOW);
   }
-
+  
+  // https://www.tme.eu/Document/746174d0ddac05c785c5271afce6c05c/RS0010.pdf
+  // page 43
+  command(0);
+  command(0);
+  command(0);
+  command(0);
+  command(0);
+	
   // Initialization sequence is not quite as documented by Winstar.
   // Documented sequence only works on initial power-up.  
   // An additional step of putting back into 8-bit mode first is 
@@ -95,41 +103,39 @@ void Adafruit_CharacterOLED::begin(uint8_t cols, uint8_t lines)
 
   // 4-Bit initialization sequence from Technobly
   write4bits(0x03); // Put back into 8-bit mode
-  delayMicroseconds(5000);
+  delayMicroseconds(DELAY_COMMANDS);
   if(_oled_ver == OLED_V2) {  // only run extra command for newer displays
     write4bits(0x08);
-    delayMicroseconds(5000);
+    delayMicroseconds(DELAY_COMMANDS);
   }
   write4bits(0x02); // Put into 4-bit mode
-  delayMicroseconds(5000);
+  delayMicroseconds(DELAY_COMMANDS);
   write4bits(0x02);
-  delayMicroseconds(5000);
+  delayMicroseconds(DELAY_COMMANDS);
   write4bits(0x08);
-  delayMicroseconds(5000);
+  delayMicroseconds(DELAY_COMMANDS);
   
   command(0x08);	// Turn Off
-  delayMicroseconds(5000);
+  delayMicroseconds(DELAY_COMMANDS);
   command(0x01);	// Clear Display
-  delayMicroseconds(5000);
+  delayMicroseconds(DELAY_COMMANDS);
   command(0x06);	// Set Entry Mode
-  delayMicroseconds(5000);
+  delayMicroseconds(DELAY_COMMANDS);
   command(0x02);	// Home Cursor
-  delayMicroseconds(5000);
+  delayMicroseconds(DELAY_COMMANDS);
   command(0x0C);	// Turn On - enable cursor & blink
-  delayMicroseconds(5000);
+  delayMicroseconds(DELAY_COMMANDS);
 }
 
 /********** high level commands, for the user! */
 void Adafruit_CharacterOLED::clear()
 {
   command(LCD_CLEARDISPLAY);  // clear display, set cursor position to zero
-  //  delayMicroseconds(2000);  // this command takes a long time!
 }
 
 void Adafruit_CharacterOLED::home()
 {
   command(LCD_RETURNHOME);  // set cursor position to zero
-  //  delayMicroseconds(2000);  // this command takes a long time!
 }
 
 void Adafruit_CharacterOLED::setCursor(uint8_t col, uint8_t row)
@@ -253,13 +259,15 @@ void Adafruit_CharacterOLED::send(uint8_t value, uint8_t mode)
   digitalWrite(_rw_pin, LOW);
   
   write4bits(value>>4);
+  delayMicroseconds(DELAY_WRITES); // TODO test to comment out on 5V mcu
   write4bits(value);
+  delayMicroseconds(DELAY_WRITES); // TODO the same
 }
 
 void Adafruit_CharacterOLED::pulseEnable(void) 
 {
   digitalWrite(_enable_pin, HIGH);
-  delayMicroseconds(50);    // Timing Spec?
+  delayMicroseconds(DELAY_WRITES); // adjust the DELAY_WRITES on 5V mcu
   digitalWrite(_enable_pin, LOW);
 }
 
@@ -270,7 +278,7 @@ void Adafruit_CharacterOLED::write4bits(uint8_t value)
     pinMode(_data_pins[i], OUTPUT);
     digitalWrite(_data_pins[i], (value >> i) & 0x01);
   }
-  delayMicroseconds(50); // Timing spec?
+  delayMicroseconds(DELAY_WRITES); // TODO test to comment out on 5V mcu
   pulseEnable();
 }
 
@@ -283,14 +291,12 @@ void Adafruit_CharacterOLED::waitForReady(void)
   digitalWrite(_rw_pin, HIGH);      
   do
   {
-  	digitalWrite(_enable_pin, LOW);
-  	digitalWrite(_enable_pin, HIGH);
-
-  	delayMicroseconds(10);
-  	busy = digitalRead(_busy_pin);
-  	digitalWrite(_enable_pin, LOW);
-  	
-  	pulseEnable();		// get remaining 4 bits, which are not used.
+    digitalWrite(_enable_pin, HIGH);
+    busy = digitalRead(_busy_pin);
+    digitalWrite(_enable_pin, LOW);
+    digitalWrite(_enable_pin, HIGH);
+    digitalWrite(_enable_pin, LOW);
+    digitalWrite(_enable_pin, LOW);
   }
   while(busy);
   
