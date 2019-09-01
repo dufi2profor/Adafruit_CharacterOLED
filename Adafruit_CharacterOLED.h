@@ -46,6 +46,10 @@
 #define LCD_RUSSIAN     0x02
 #define LCD_EUROPEAN_II 0x03
 
+// delay times
+#define	DELAY_INIT      50000
+#define	DELAY_COMMANDS  5000
+#define	DELAY_WRITES    10
 
 class Adafruit_CharacterOLED : public Print {
 public:
