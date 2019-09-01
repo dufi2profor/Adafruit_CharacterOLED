@@ -7,6 +7,7 @@
 #######################################
 
 CharacterOLED KEYWORD1
+Adafruit_CharacterOLED	KEYWORD1
 
 #######################################
 # Methods and Functions (KEYWORD2)
